@@ -19,7 +19,7 @@ void TIM1_BRK_TIM9_IRQHandler(){
 void TIM1_UP_TIM10_IRQHandler(){
 	T9OFF
 	T10OFF
-	data_ready = 1;
+	data_ready |= 0x01;
 	//Eliminar la bandera
 	TIM10 -> SR = 0;
 	return;
@@ -27,11 +27,14 @@ void TIM1_UP_TIM10_IRQHandler(){
 
 uint32_t Get_freq(){
 	uint32_t events = 0;
+	//Check if the Init as been run
+	if(!(data_ready >> 7))
+		Freq_Init();
 	//Start the timers
 	T9ON
 	T10ON
 	//Wait for get the count
-	while(data_ready != 1);
+	while(data_ready != 0x81);
 	//Get the value
 	events = overflows * 65536;
 	events += TIM9 -> CNT;
@@ -39,12 +42,11 @@ uint32_t Get_freq(){
 	TIM10 -> CNT = 0;
 	TIM9 -> CNT = 0;
 	overflows = 0;
-	data_ready = 0;
+	data_ready = 0x80;
 	return events;
 }
 
 void Freq_Init(){
-	data_ready = 0;
 	//Configurar el pin para source del tmr9
 	RCC -> AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
 	GPIOE -> MODER |= GPIO_MODER_MODER6_1;
@@ -68,5 +70,6 @@ void Freq_Init(){
 	TIM10 -> DIER |= TIM_DIER_UIE;
 	NVIC_SetPriority(TIM1_UP_TIM10_IRQn,1);
 	NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn);
+	data_ready = 0x80;
 	return;
 }
